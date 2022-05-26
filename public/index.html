@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Index</title>
+    <script src="/js/vue.min.js" type="application/javascript" rel="script"></script>
+    <script src="/js/axios.min.js" type="application/javascript" rel="script"></script>
+    <style>
+        * {
+            padding: 0;
+            margin: 0;
+        }
+
+        .body {
+            box-sizing: border-box;
+            overflow: auto;
+            height: 800px;
+            width: 100%;
+            border: 1px solid black;
+            padding-left: 5px;
+        }
+    </style>
+</head>
+<body>
+<div id="root">
+    <div style="display: flex;justify-content: space-around">
+        <div style="margin-bottom: 10px;margin-top: 10px">
+            选择应用:
+            <select v-model="app" style="height: 20px;width: 200px" @change="ip='';level='';fetchData()">
+                <option disabled value="">请选择</option>
+                <option v-for="(item,index) in appArray" :key="item" v-text="item"></option>
+            </select>
+        </div>
+
+        <div style="margin-bottom: 10px;margin-top: 10px">
+            选择应用ip:
+            <select v-model="ip" style="height: 20px;width: 200px" @change="level='';fetchData()">
+                <option disabled value="">请选择</option>
+                <option v-for="(item,index) in appIpArray" :key="item" v-text="item"></option>
+            </select>
+        </div>
+
+        <div style="margin-bottom: 10px;margin-top: 10px">
+            选择日志级别:
+            <select v-model="level" style="height: 20px;width: 200px" @change="fetchData">
+                <option disabled value="">请选择</option>
+                <option v-for="(item,index) in levelArray" :key="item" v-text="item"></option>
+            </select>
+        </div>
+    </div>
+    <div class="body" v-html="content"></div>
+    <div>
+        <div style="float: right;margin-right: 50px">
+            <span v-text="total"></span>
+        </div>
+    </div>
+</div>
+</body>
+<script type="application/javascript">
+    let Axios = axios.create({
+        timeout: "3000"
+    })
+    Axios.interceptors.request.use(req => {
+        return req
+    })
+    Axios.interceptors.response.use(res => {
+        return res
+    })
+    Vue.prototype.$axios = Axios
+    let vm = new Vue({
+        el: "#root",
+        data: () => {
+            return {
+                "message": "hello world, this is message",
+                "content": "",
+                "app": "",
+                "ip": "",
+                "level": "",
+                "appArray": [],
+                "appIpArray": [],
+                "levelArray": [],
+                "total": 0
+            }
+        },
+        methods: {
+            fetchAllLevel() {
+                let params = {}
+                if (this.app) {
+                    params.app = this.app
+                }
+                if (this.ip) {
+                    params.ip = this.ip
+                }
+                this.$axios.get("/remoteLogAllLevel", {
+                    params: {
+                        ...params
+                    }
+                }).then(res => {
+                    let data = res.data
+                    if (data.code === 200) {
+                        this.levelArray = data.data
+                    } else {
+                        console.log(data)
+                    }
+                }).catch(err => console.log(err))
+            },
+            fetchAllIp() {
+                let params = {}
+                if (this.app) {
+                    params.app = this.app
+                }
+                this.$axios.get("/remoteLogAllIp", {
+                    params: {
+                        ...params
+                    }
+                }).then(res => {
+                    let data = res.data
+                    if (data.code === 200) {
+                        this.appIpArray = data.data
+                    } else {
+                        console.log(data)
+                    }
+                }).catch(err => console.log(err))
+            },
+            fetchAppNameList() {
+                this.$axios.get("/remoteLogApplications").then(res => {
+                    let data = res.data
+                    if (data.code === 200) {
+                        this.appArray = data.data
+                    } else {
+                        console.log(data)
+                    }
+                }).catch(err => console.log(err))
+            },
+            fetchData() {
+                let params = {}
+                if (this.app) {
+                    params.app = this.app
+                }
+                if (this.ip) {
+                    params.ip = this.ip
+                }
+                if (this.level) {
+                    params.level = this.level
+                }
+                this.$axios.get("/remoteLogs", {
+                    params: {
+                        "page": 1,
+                        "size": 1000,
+                        ...params
+                    }
+                }).then(res => {
+                    this.total = res.headers.total
+                    this.content = res.data
+                    this.fetchAllIp()
+                    this.fetchAllLevel()
+                }).catch(err => {
+                    console.log(err)
+                })
+            }
+        },
+        mounted() {
+            this.fetchAppNameList()
+            this.fetchData()
+        }
+    })
+</script>
+</html>
